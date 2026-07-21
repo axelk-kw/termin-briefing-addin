@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Termin-Briefing Outlook-Add-in.
+
+  Host-URLs zeigen auf GitHub Pages. Ändert sich der Hosting-Ort, müssen die
+  fünf URLs unten (AppDomain, Commands.Url, WebViewRuntime.Url, JSRuntime.Url,
+  die Icon- und Icon-High-Res-URLs) angepasst werden — sonst nichts.
+
+  Basis-URL (hier): https://axelk-kw.github.io/termin-briefing-addin
+-->
+<OfficeApp
+  xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
+  xmlns:mailappor="http://schemas.microsoft.com/office/mailappversionoverrides/1.0"
+  xsi:type="MailApp">
+
+  <!-- Feste, eindeutige ID des Add-ins. Nicht ändern (sonst gilt es als neues Add-in). -->
+  <Id>b7e9c3a2-4f18-4d6b-9c2e-1a7f5e8d3b40</Id>
+  <Version>1.0.0.0</Version>
+  <ProviderName>Knicker &amp; Wortmann</ProviderName>
+  <DefaultLocale>de-DE</DefaultLocale>
+  <DisplayName DefaultValue="Termin-Briefing" />
+  <Description DefaultValue="Fügt beim Anlegen eines Termins automatisch die Briefing-Checkliste ein (Mitnehmen, Werkzeug, Zahlung …)." />
+  <IconUrl DefaultValue="https://axelk-kw.github.io/termin-briefing-addin/assets/icon-64.png" />
+  <HighResolutionIconUrl DefaultValue="https://axelk-kw.github.io/termin-briefing-addin/assets/icon-128.png" />
+  <SupportUrl DefaultValue="https://github.com/axelk-kw/termin-briefing-tool" />
+
+  <!-- Erlaubte Web-Domäne des Add-ins -->
+  <AppDomains>
+    <AppDomain>https://axelk-kw.github.io</AppDomain>
+  </AppDomains>
+
+  <Hosts>
+    <Host Name="Mailbox" />
+  </Hosts>
+
+  <Requirements>
+    <Sets>
+      <Set Name="Mailbox" MinVersion="1.10" />
+    </Sets>
+  </Requirements>
+
+  <FormSettings>
+    <Form xsi:type="ItemRead">
+      <DesktopSettings>
+        <SourceLocation DefaultValue="https://axelk-kw.github.io/termin-briefing-addin/commands.html" />
+        <RequestedHeight>250</RequestedHeight>
+      </DesktopSettings>
+    </Form>
+  </FormSettings>
+
+  <!-- Schreibrecht auf das Element (Termin-Text ergänzen) -->
+  <Permissions>ReadWriteItem</Permissions>
+
+  <Rule xsi:type="RuleCollection" Mode="Or">
+    <Rule xsi:type="ItemIs" ItemType="Appointment" FormType="Edit" />
+  </Rule>
+  <DisableEntityHighlighting>false</DisableEntityHighlighting>
+
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/mailappversionoverrides" xsi:type="VersionOverridesV1_0">
+    <VersionOverrides xmlns="http://schemas.microsoft.com/office/mailappversionoverrides/1.1" xsi:type="VersionOverridesV1_1">
+      <Requirements>
+        <bt:Sets DefaultMinVersion="1.10">
+          <bt:Set Name="Mailbox" />
+        </bt:Sets>
+      </Requirements>
+
+      <Hosts>
+        <Host xsi:type="MailHost">
+          <!-- Gemeinsame Laufzeit für Ereignis + Ribbon-Funktion -->
+          <Runtimes>
+            <Runtime resid="WebViewRuntime.Url">
+              <Override type="javascript" resid="JSRuntime.Url" />
+            </Runtime>
+          </Runtimes>
+
+          <DesktopFormFactor>
+            <FunctionFile resid="Commands.Url" />
+
+            <!-- (1) Automatisch beim Anlegen eines neuen Termins -->
+            <ExtensionPoint xsi:type="LaunchEvent">
+              <LaunchEvents>
+                <LaunchEvent Type="OnNewAppointmentOrganizer" FunctionName="onNewAppointment" />
+              </LaunchEvents>
+              <SourceLocation resid="WebViewRuntime.Url" />
+            </ExtensionPoint>
+
+            <!-- (2) Ribbon-Knopf im Termin-Fenster (manueller Fallback, alle Plattformen) -->
+            <ExtensionPoint xsi:type="AppointmentOrganizerCommandSurface">
+              <OfficeTab id="TabDefault">
+                <Group id="briefingGroup">
+                  <Label resid="GroupLabel" />
+                  <Control xsi:type="Button" id="insertBriefingButton">
+                    <Label resid="ButtonLabel" />
+                    <Supertip>
+                      <Title resid="ButtonLabel" />
+                      <Description resid="ButtonTip" />
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="Icon.16" />
+                      <bt:Image size="32" resid="Icon.32" />
+                      <bt:Image size="80" resid="Icon.80" />
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>insertBriefing</FunctionName>
+                    </Action>
+                  </Control>
+                </Group>
+              </OfficeTab>
+            </ExtensionPoint>
+          </DesktopFormFactor>
+        </Host>
+      </Hosts>
+
+      <Resources>
+        <bt:Images>
+          <bt:Image id="Icon.16" DefaultValue="https://axelk-kw.github.io/termin-briefing-addin/assets/icon-16.png" />
+          <bt:Image id="Icon.32" DefaultValue="https://axelk-kw.github.io/termin-briefing-addin/assets/icon-32.png" />
+          <bt:Image id="Icon.80" DefaultValue="https://axelk-kw.github.io/termin-briefing-addin/assets/icon-80.png" />
+        </bt:Images>
+        <bt:Urls>
+          <bt:Url id="Commands.Url" DefaultValue="https://axelk-kw.github.io/termin-briefing-addin/commands.html" />
+          <bt:Url id="WebViewRuntime.Url" DefaultValue="https://axelk-kw.github.io/termin-briefing-addin/commands.html" />
+          <bt:Url id="JSRuntime.Url" DefaultValue="https://axelk-kw.github.io/termin-briefing-addin/commands.js" />
+        </bt:Urls>
+        <bt:ShortStrings>
+          <bt:String id="GroupLabel" DefaultValue="Termin-Briefing" />
+          <bt:String id="ButtonLabel" DefaultValue="Briefing einfügen" />
+        </bt:ShortStrings>
+        <bt:LongStrings>
+          <bt:String id="ButtonTip" DefaultValue="Fügt die leere Briefing-Checkliste in diesen Termin ein (falls noch keine vorhanden ist)." />
+        </bt:LongStrings>
+      </Resources>
+    </VersionOverrides>
+  </VersionOverrides>
+</OfficeApp>
