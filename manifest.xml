@@ -17,7 +17,7 @@
 
   <!-- Feste, eindeutige ID des Add-ins. Nicht ändern (sonst gilt es als neues Add-in). -->
   <Id>b7e9c3a2-4f18-4d6b-9c2e-1a7f5e8d3b40</Id>
-  <Version>1.1.0.0</Version>
+  <Version>1.1.1.0</Version>
   <ProviderName>Knicker &amp; Wortmann</ProviderName>
   <DefaultLocale>de-DE</DefaultLocale>
   <DisplayName DefaultValue="Termin-Briefing" />
@@ -104,6 +104,8 @@
                     </Icon>
                     <Action xsi:type="ShowTaskpane">
                       <SourceLocation resid="Taskpane.Url" />
+                      <!-- 📌-Nadel im Taskpane: einmal anheften -> bleibt bei jedem Termin offen -->
+                      <SupportsPinning>true</SupportsPinning>
                     </Action>
                   </Control>
                 </Group>

@@ -341,6 +341,14 @@ if (typeof Office !== "undefined" && typeof document !== "undefined" && Office.o
     loadFromItem();
     $("save").addEventListener("click", save);
     $("reload").addEventListener("click", loadFromItem);
+    // Angeheftetes Taskpane (📌): beim Wechsel auf einen anderen Termin neu laden,
+    // sonst zeigt das Formular die Werte des vorherigen Termins.
+    if (Office.context && Office.context.mailbox && Office.context.mailbox.addHandlerAsync) {
+      Office.context.mailbox.addHandlerAsync(Office.EventType.ItemChanged, function () {
+        setStatus("", true);
+        loadFromItem();
+      });
+    }
   });
 }
 
