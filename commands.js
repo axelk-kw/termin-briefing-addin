@@ -13,7 +13,7 @@
 // Feldreihenfolge = FIELDS_FULL aus prefill.py (Vollvariante mit Werkzeug).
 // Beim manuellen Anlegen ist die Kategorie i. d. R. noch nicht gesetzt, daher immer
 // die volle Liste — überzählige Zeilen (z. B. Werkzeug im Laden) kann man löschen.
-var FIELDS = ["Mitnehmen", "Werkzeug", "Zubehör", "Beim Kunden", "Zahlung", "Kunde", "Hinweise"];
+var FIELDS = ["Thema", "Produkt", "Mitnehmen", "Werkzeug", "Zubehör", "Beim Kunden", "Zahlung", "Kunde", "Hinweise"];
 var MARK_HINT = "(diese Zeile bitte nicht löschen)";
 
 // Erkennt einen bereits vorhandenen Block (gleiche Regex wie BLOCK_RE, Startmarker genügt).

@@ -17,6 +17,8 @@ var BLOCK_HTML_RE = /---\s*BRIEFING\s*---[\s\S]*?---\s*ENDE\s*---[^<]*/i;
 
 // Feld-Beschriftungen wie in briefing.py (FIELDS), inkl. erkannter Varianten
 var FIELD_LABELS = {
+  thema:       ["Thema", "Terminart"],
+  produkt:     ["Produkt", "Produkttyp", "Gerät", "Geraet"],
   mitnehmen:   ["Mitnehmen", "Produkte", "Ware"],
   werkzeug:    ["Werkzeug"],
   zubehoer:    ["Zubehör", "Zubehoer", "Zubehör vor Ort"],
@@ -25,9 +27,9 @@ var FIELD_LABELS = {
   kunde:       ["Kunde", "Kundeninfo"],
   hinweise:    ["Hinweise", "Hinweis"],
 };
-var FIELD_ORDER = ["mitnehmen", "werkzeug", "zubehoer", "beim_kunden", "zahlung", "kunde", "hinweise"];
-var FIELD_NAME = { mitnehmen: "Mitnehmen", werkzeug: "Werkzeug", zubehoer: "Zubehör",
-  beim_kunden: "Beim Kunden", zahlung: "Zahlung", kunde: "Kunde", hinweise: "Hinweise" };
+var FIELD_ORDER = ["thema", "produkt", "mitnehmen", "werkzeug", "zubehoer", "beim_kunden", "zahlung", "kunde", "hinweise"];
+var FIELD_NAME = { thema: "Thema", produkt: "Produkt", mitnehmen: "Mitnehmen", werkzeug: "Werkzeug",
+  zubehoer: "Zubehör", beim_kunden: "Beim Kunden", zahlung: "Zahlung", kunde: "Kunde", hinweise: "Hinweise" };
 
 var EMPTY_VALUES = ["", "keine", "keins", "keiner", "nichts", "-", "—", "n/a", "nein"];
 
@@ -123,12 +125,64 @@ function hinweiseState(raw, presets) {
   return st;
 }
 
+// Thema-Rohwert auf eine bekannte Option abbilden (sonst Rohwert behalten)
+function themaFromRaw(raw, themen) {
+  raw = (raw || "").trim();
+  if (isEmptyValue(raw)) return "";
+  var hit = (themen || []).find(function (t) { return t.toLowerCase() === raw.toLowerCase(); });
+  return hit || raw;
+}
+
+// Sichtbare Vorauswahlen eines Feldes je nach Thema (themenFilter in options.js).
+// Angehakte Optionen bleiben immer sichtbar, damit beim Themawechsel nichts verloren geht.
+function visibleOptions(field, allOptions, thema, checkedNow, filters) {
+  var f = filters ? filters[thema] : null;
+  var allowed = (f && f[field] !== undefined) ? f[field] : null;
+  if (allowed === null) return allOptions.slice();
+  return allOptions.filter(function (o) {
+    return allowed.indexOf(o) >= 0 || (checkedNow || []).indexOf(o) >= 0;
+  });
+}
+
+// "Produkt: TV: Loewe stellar 55; HiFi" -> {checked, details, sonstiges}
+function produktState(raw, typen) {
+  var st = { checked: [], details: {}, sonstiges: "" };
+  if (!raw || isEmptyValue(raw)) return st;
+  var rest = [];
+  raw.split(";").map(function (s) { return s.trim(); }).filter(Boolean).forEach(function (tok) {
+    var m = /^([^:]+?)\s*(?::\s*(.*))?$/.exec(tok);
+    var name = m ? m[1].trim() : tok;
+    var hit = (typen || []).find(function (t) { return t.toLowerCase() === name.toLowerCase(); });
+    if (hit) {
+      st.checked.push(hit);
+      if (m && m[2]) st.details[hit] = m[2].trim();
+    } else {
+      rest.push(tok); // unbekannter Eintrag -> Sonstiges (geht nicht verloren)
+    }
+  });
+  st.sonstiges = rest.join("; ");
+  return st;
+}
+
+function produktValue(st, typen) {
+  var parts = [];
+  (typen || []).forEach(function (t) {
+    if (st.checked.indexOf(t) >= 0) {
+      parts.push(st.details[t] ? t + ": " + st.details[t] : t);
+    }
+  });
+  if (st.sonstiges) parts.push(flat(st.sonstiges));
+  return parts.join("; ");
+}
+
 // Body-Text -> kompletter Formular-Zustand
 function stateFromBody(bodyText, opts) {
   var parsed = parseBlockText(bodyText);
   var f = parsed.fields;
   return {
     found: parsed.found,
+    thema: themaFromRaw(f.thema, opts.themen),
+    produkt: produktState(f.produkt, opts.produktTypen),
     mitnehmen: packState(f.mitnehmen, []),
     werkzeug: packState(f.werkzeug, opts.werkzeug),
     zubehoer: packState(f.zubehoer, opts.zubehoer),
@@ -175,6 +229,8 @@ function hinweiseValue(st) {
 
 function valuesFromState(st) {
   return {
+    thema: (st.thema || "").trim(),
+    produkt: produktValue(st.produkt, (typeof BRIEFING_OPTIONS !== "undefined" ? BRIEFING_OPTIONS.produktTypen : null) || st.produkt.checked),
     mitnehmen: st.mitnehmen.keine ? "keine"
       : splitItems(flat(st.mitnehmen.sonstiges).replace(/;/g, ",")).join(", "),
     werkzeug: packValue(st.werkzeug),
@@ -227,19 +283,65 @@ function radioRow(name, value, checked) {
     '" value="' + value + '"' + (checked ? " checked" : "") + "> " + value + "</label>";
 }
 
+function escapeAttr(s) { return escapeHtml(s || "").replace(/"/g, "&quot;"); }
+
+function produktIds(typ) {
+  var slug = typ.replace(/\W+/g, "_");
+  return { box: "produkt_" + slug, detail: "produktdetail_" + slug };
+}
+
+// Zeile: Checkbox (Typ) + Inline-Textfeld fürs genaue Produkt (optional)
+function produktRow(typ, checked, detail) {
+  var ids = produktIds(typ);
+  return '<div class="prow">'
+    + '<label><input type="checkbox" id="' + ids.box + '" value="' + typ + '"'
+    + (checked ? " checked" : "") + "> " + typ + "</label>"
+    + '<input type="text" id="' + ids.detail + '" data-typ="' + escapeAttr(typ)
+    + '" value="' + escapeAttr(detail) + '" placeholder="optional: genaues Produkt">'
+    + "</div>";
+}
+
+// Eine Packlisten-Gruppe (Werkzeug/Zubehör) themenabhängig gefiltert zeichnen
+function renderPackGroup(field, containerId, allOptions, checked, thema) {
+  var vis = visibleOptions(field, allOptions, thema, checked, BRIEFING_OPTIONS.themenFilter);
+  $(containerId).innerHTML = vis.map(function (o) {
+    return checkboxRow(field, o, checked.indexOf(o) >= 0);
+  }).join("");
+}
+
+// Aktuell gewähltes Thema (Radio; unbekannter Altwert aus dem Block als Fallback)
+function currentThema() {
+  return radioValue("thema") || $("g_thema").dataset.raw || "";
+}
+
+// Beim Themawechsel: Häkchen aus dem DOM retten, Gruppen neu (gefiltert) zeichnen
+function applyThemaFilter() {
+  var thema = currentThema();
+  renderPackGroup("werkzeug", "g_werkzeug", BRIEFING_OPTIONS.werkzeug, checkedValues("werkzeug"), thema);
+  renderPackGroup("zubehoer", "g_zubehoer", BRIEFING_OPTIONS.zubehoer, checkedValues("zubehoer"), thema);
+}
+
 function renderForm(st, opts) {
+  $("g_thema").innerHTML = (opts.themen || []).map(function (o) {
+    return radioRow("thema", o, st.thema === o);
+  }).join("");
+  // Unbekannter Altwert (z. B. von Hand getippt): merken, damit er beim Speichern
+  // erhalten bleibt, solange niemand aktiv ein anderes Thema wählt.
+  $("g_thema").dataset.raw = (opts.themen || []).indexOf(st.thema) >= 0 ? "" : (st.thema || "");
+
+  $("g_produkt").innerHTML = (opts.produktTypen || []).map(function (t) {
+    return produktRow(t, st.produkt.checked.indexOf(t) >= 0, st.produkt.details[t] || "");
+  }).join("");
+  $("s_produkt").value = st.produkt.sonstiges;
+
   $("f_mitnehmen").value = st.mitnehmen.sonstiges.split(", ").filter(Boolean).join("\n");
   $("k_mitnehmen").checked = st.mitnehmen.keine;
 
-  $("g_werkzeug").innerHTML = opts.werkzeug.map(function (o) {
-    return checkboxRow("werkzeug", o, st.werkzeug.checked.indexOf(o) >= 0);
-  }).join("");
+  renderPackGroup("werkzeug", "g_werkzeug", opts.werkzeug, st.werkzeug.checked, st.thema);
   $("s_werkzeug").value = st.werkzeug.sonstiges;
   $("k_werkzeug").checked = st.werkzeug.keine;
 
-  $("g_zubehoer").innerHTML = opts.zubehoer.map(function (o) {
-    return checkboxRow("zubehoer", o, st.zubehoer.checked.indexOf(o) >= 0);
-  }).join("");
+  renderPackGroup("zubehoer", "g_zubehoer", opts.zubehoer, st.zubehoer.checked, st.thema);
   $("s_zubehoer").value = st.zubehoer.sonstiges;
   $("k_zubehoer").checked = st.zubehoer.keine;
 
@@ -278,8 +380,25 @@ function radioValue(name) {
   return el ? el.value : "";
 }
 
+function readProdukt() {
+  var st = { checked: [], details: {}, sonstiges: $("s_produkt").value };
+  (BRIEFING_OPTIONS.produktTypen || []).forEach(function (t) {
+    var ids = produktIds(t);
+    var box = $(ids.box);
+    var detail = ($(ids.detail) ? $(ids.detail).value : "").trim();
+    // Text eingetragen zählt wie angehakt — niemand soll Tipparbeit verlieren
+    if ((box && box.checked) || detail) {
+      st.checked.push(t);
+      if (detail) st.details[t] = detail;
+    }
+  });
+  return st;
+}
+
 function readForm() {
   return {
+    thema: currentThema(),
+    produkt: readProdukt(),
     mitnehmen: { keine: $("k_mitnehmen").checked, checked: [], sonstiges: $("f_mitnehmen").value },
     werkzeug: { keine: $("k_werkzeug").checked, checked: checkedValues("werkzeug"), sonstiges: $("s_werkzeug").value },
     zubehoer: { keine: $("k_zubehoer").checked, checked: checkedValues("zubehoer"), sonstiges: $("s_zubehoer").value },
@@ -341,6 +460,16 @@ if (typeof Office !== "undefined" && typeof document !== "undefined" && Office.o
     loadFromItem();
     $("save").addEventListener("click", save);
     $("reload").addEventListener("click", loadFromItem);
+    // Themawechsel filtert die Vorauswahlen live (Delegation: Container bleibt bestehen)
+    $("g_thema").addEventListener("change", applyThemaFilter);
+    // Tippen im Produkt-Detail hakt den Typ automatisch an
+    $("g_produkt").addEventListener("input", function (e) {
+      var typ = e.target && e.target.getAttribute && e.target.getAttribute("data-typ");
+      if (typ && e.target.value.trim()) {
+        var box = $(produktIds(typ).box);
+        if (box) box.checked = true;
+      }
+    });
     // Angeheftetes Taskpane (📌): beim Wechsel auf einen anderen Termin neu laden,
     // sonst zeigt das Formular die Werte des vorherigen Termins.
     if (Office.context && Office.context.mailbox && Office.context.mailbox.addHandlerAsync) {
@@ -356,5 +485,7 @@ if (typeof Office !== "undefined" && typeof document !== "undefined" && Office.o
 if (typeof module !== "undefined" && module.exports) {
   module.exports = { parseBlockText: parseBlockText, stateFromBody: stateFromBody,
     valuesFromState: valuesFromState, buildBlockLines: buildBlockLines,
-    blockFullHtml: blockFullHtml, zahlungState: zahlungState };
+    blockFullHtml: blockFullHtml, zahlungState: zahlungState,
+    visibleOptions: visibleOptions, themaFromRaw: themaFromRaw,
+    produktState: produktState, produktValue: produktValue };
 }

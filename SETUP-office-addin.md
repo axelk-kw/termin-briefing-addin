@@ -21,6 +21,15 @@ Alle Listen stehen in **`options.js`** — bewusst simpel gehalten:
 3. Fertig — beim nächsten Öffnen des Formulars überall da. **Kein Admin-Center nötig**,
    da sich nur eine gehostete Datei ändert, nicht das Manifest.
 
+Das gilt genauso für die **Themen** (`themen`), die **Produkttypen** (`produktTypen`,
+je Typ mit optionalem Inline-Feld fürs genaue Gerät — gespeichert als
+`Produkt: TV: Loewe stellar 55; HiFi`) und die **themenabhängige Filterung**
+(`themenFilter`): je Thema steht dort, welche Werkzeug-/Zubehör-Vorauswahlen angezeigt
+werden. Thema ohne Eintrag = alles anzeigen; `[]` = keine Vorauswahl (nur Sonstiges).
+Bereits angehakte Optionen bleiben immer sichtbar, damit beim Themawechsel nichts
+verloren geht. Das gewählte Thema landet als `Thema:`-Zeile im Block und erscheint im
+Digest als Badge am Termin.
+
 > **Warum ein Add-in und kein VBA-Makro?** VBA gibt es nur im klassischen Outlook für Windows.
 > Das Add-in läuft plattformübergreifend — Windows, **Mac** und Outlook im Browser.
 
@@ -98,6 +107,10 @@ automatisch (siehe Hinweise), tut es der Knopf **„Briefing einfügen"** im Ter
 - **Automatisches Einfügen** (Ereignis) läuft am zuverlässigsten in **Outlook für Windows (neu)**
   und **im Browser**. Auf **Mac** kann es je nach Version etwas hinterherhinken — dort ist der
   **Knopf** der sichere Weg. Der Knopf funktioniert überall.
+- **Anheften (📌) des Formulars:** wird nicht überall angeboten. Getestet 21.07.2026:
+  **Outlook für Mac (neu) zeigt beim Termin-Verfassen keine Nadel** — dort bleibt es bei einem
+  Klick auf „Briefing ausfüllen" pro Termin. Windows/Web je nach Version. Plattform-Grenze,
+  kein Fehler; ein sich selbst öffnendes Taskpane sieht Outlook nicht vor.
 - **Caching:** Outlook cached Add-in-Code teils zäh. Nach einer Änderung an `commands.js` hilft
   Outlook neu starten bzw. im Browser hart neu laden (Strg/Cmd+Shift+R).
 - **Icon ändern:** `assets/`-PNGs ersetzen (Logo) oder `make-icons.py` anpassen und
