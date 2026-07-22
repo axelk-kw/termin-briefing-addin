@@ -1,13 +1,25 @@
 # Office-Add-in: Vorlage automatisch beim Termin-Anlegen einfügen
 
 Dieses Add-in ergänzt den bekannten Briefing-Block **direkt beim Erstellen eines Termins** —
-zeichengleich zu dem, was `prefill.py` schreibt. Zwei Wege, beide gleich:
+zeichengleich zu dem, was `prefill.py` schreibt. Zwei Bausteine:
 
-1. **Automatisch** — beim Anlegen eines neuen Termins fügt sich der Block von selbst oben ein
-   (Ereignis `OnNewAppointmentOrganizer`).
-2. **Knopf „Briefing einfügen"** — im Termin-Fenster in der Menüleiste, als manueller Fallback.
+1. **Automatisch** — beim Anlegen eines neuen Termins fügt sich der leere Block von selbst oben
+   ein (Ereignis `OnNewAppointmentOrganizer`). Ist schon ein Block da, passiert nichts.
+2. **Knopf „Briefing ausfüllen"** — öffnet das **Formular** im Seitenfenster (`taskpane.html`):
+   Vorauswahlen anklicken statt tippen (Werkzeug-Häkchen, Zahlungsart-Auswahl, Kunden-Merkmale …).
+   „Übernehmen" schreibt den Textblock in den Termin; ein vorhandener Block wird dabei
+   **ersetzt und vorher eingelesen** — Bearbeiten funktioniert also auch.
 
-In beiden Fällen gilt: **ist schon ein Block da, passiert nichts** (kein Überschreiben).
+Der Termin enthält weiterhin nur den parse-baren **Textblock** — das Digest-Tool auf dem
+Mini-PC merkt vom Formular nichts und funktioniert unverändert.
+
+## Vorauswahl-Optionen ergänzen (z. B. neues Standard-Werkzeug)
+
+Alle Listen stehen in **`options.js`** — bewusst simpel gehalten:
+1. Zeile in der passenden Liste ergänzen (z. B. `"Kabeltrommel",` unter `werkzeug`)
+2. `git add options.js && git commit -m "Option ergänzt" && git push`
+3. Fertig — beim nächsten Öffnen des Formulars überall da. **Kein Admin-Center nötig**,
+   da sich nur eine gehostete Datei ändert, nicht das Manifest.
 
 > **Warum ein Add-in und kein VBA-Makro?** VBA gibt es nur im klassischen Outlook für Windows.
 > Das Add-in läuft plattformübergreifend — Windows, **Mac** und Outlook im Browser.
@@ -95,6 +107,15 @@ automatisch (siehe Hinweise), tut es der Knopf **„Briefing einfügen"** im Ter
   Doppelt eingefügt wird nie — beide prüfen erst, ob schon ein Block da ist.
 - **Vollvariante:** Das Add-in fügt immer die volle Feldliste ein (inkl. Werkzeug). Beim manuellen
   Anlegen steht die Kategorie meist noch nicht fest; überzählige Zeilen einfach löschen.
+
+## Updates ausrollen — zwei Fälle
+
+- **Nur gehostete Dateien geändert** (`taskpane.html`, `taskpane.js`, `options.js`,
+  `commands.js`, Icons): einfach committen + pushen. GitHub Pages aktualisiert in 1–2 Min,
+  Outlook zieht die Dateien beim nächsten Öffnen (ggf. Outlook neu starten wegen Cache).
+- **`manifest.xml` geändert** (neue Knöpfe, neue Version): zusätzlich im
+  **M365 Admin Center → Integrierte Apps → Termin-Briefing → Manifest aktualisieren**
+  die neue Datei hochladen. Danach Outlook neu starten.
 
 ## Manifest prüfen (bei Änderungen)
 

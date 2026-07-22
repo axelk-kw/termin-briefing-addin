@@ -17,7 +17,7 @@
 
   <!-- Feste, eindeutige ID des Add-ins. Nicht ändern (sonst gilt es als neues Add-in). -->
   <Id>b7e9c3a2-4f18-4d6b-9c2e-1a7f5e8d3b40</Id>
-  <Version>1.0.0.0</Version>
+  <Version>1.1.0.0</Version>
   <ProviderName>Knicker &amp; Wortmann</ProviderName>
   <DefaultLocale>de-DE</DefaultLocale>
   <DisplayName DefaultValue="Termin-Briefing" />
@@ -102,8 +102,8 @@
                       <bt:Image size="32" resid="Icon.32" />
                       <bt:Image size="80" resid="Icon.80" />
                     </Icon>
-                    <Action xsi:type="ExecuteFunction">
-                      <FunctionName>insertBriefing</FunctionName>
+                    <Action xsi:type="ShowTaskpane">
+                      <SourceLocation resid="Taskpane.Url" />
                     </Action>
                   </Control>
                 </Group>
@@ -123,13 +123,14 @@
           <bt:Url id="Commands.Url" DefaultValue="https://axelk-kw.github.io/termin-briefing-addin/commands.html" />
           <bt:Url id="WebViewRuntime.Url" DefaultValue="https://axelk-kw.github.io/termin-briefing-addin/commands.html" />
           <bt:Url id="JSRuntime.Url" DefaultValue="https://axelk-kw.github.io/termin-briefing-addin/commands.js" />
+          <bt:Url id="Taskpane.Url" DefaultValue="https://axelk-kw.github.io/termin-briefing-addin/taskpane.html" />
         </bt:Urls>
         <bt:ShortStrings>
           <bt:String id="GroupLabel" DefaultValue="Termin-Briefing" />
-          <bt:String id="ButtonLabel" DefaultValue="Briefing einfügen" />
+          <bt:String id="ButtonLabel" DefaultValue="Briefing ausfüllen" />
         </bt:ShortStrings>
         <bt:LongStrings>
-          <bt:String id="ButtonTip" DefaultValue="Fügt die leere Briefing-Checkliste in diesen Termin ein (falls noch keine vorhanden ist)." />
+          <bt:String id="ButtonTip" DefaultValue="Öffnet das Briefing-Formular: Vorauswahlen anklicken statt tippen — schreibt die Checkliste in den Termin." />
         </bt:LongStrings>
       </Resources>
     </VersionOverrides>
