@@ -19,6 +19,8 @@ var BLOCK_HTML_RE = /---\s*BRIEFING\s*---[\s\S]*?---\s*ENDE\s*---[^<]*/i;
 var FIELD_LABELS = {
   thema:       ["Thema", "Terminart"],
   produkt:     ["Produkt", "Produkttyp", "Gerät", "Geraet"],
+  kaufdatum:   ["Kaufdatum"],
+  seriennummer: ["Seriennummer", "Seriennr", "SN", "S/N"],
   mitnehmen:   ["Mitnehmen", "Produkte", "Ware"],
   werkzeug:    ["Werkzeug"],
   zubehoer:    ["Zubehör", "Zubehoer", "Zubehör vor Ort"],
@@ -27,9 +29,13 @@ var FIELD_LABELS = {
   kunde:       ["Kunde", "Kundeninfo"],
   hinweise:    ["Hinweise", "Hinweis"],
 };
-var FIELD_ORDER = ["thema", "produkt", "mitnehmen", "werkzeug", "zubehoer", "beim_kunden", "zahlung", "kunde", "hinweise"];
-var FIELD_NAME = { thema: "Thema", produkt: "Produkt", mitnehmen: "Mitnehmen", werkzeug: "Werkzeug",
-  zubehoer: "Zubehör", beim_kunden: "Beim Kunden", zahlung: "Zahlung", kunde: "Kunde", hinweise: "Hinweise" };
+// Reihenfolge im Textblock: Kunde zuerst (Wunsch-Reihenfolge im Formular), dann
+// Thema/Produkt, dann Packlisten, dann restliche Infos.
+var FIELD_ORDER = ["kunde", "thema", "produkt", "kaufdatum", "seriennummer",
+  "mitnehmen", "werkzeug", "zubehoer", "beim_kunden", "zahlung", "hinweise"];
+var FIELD_NAME = { kunde: "Kunde", thema: "Thema", produkt: "Produkt", kaufdatum: "Kaufdatum",
+  seriennummer: "Seriennummer", mitnehmen: "Mitnehmen", werkzeug: "Werkzeug",
+  zubehoer: "Zubehör", beim_kunden: "Beim Kunden", zahlung: "Zahlung", hinweise: "Hinweise" };
 
 var EMPTY_VALUES = ["", "keine", "keins", "keiner", "nichts", "-", "—", "n/a", "nein"];
 
@@ -97,13 +103,16 @@ function zahlungState(raw, methods) {
 }
 
 function kundeState(raw, opts) {
-  var st = { art: "", merkmale: [], tel: "", mail: "", sonstiges: "" };
+  var st = { art: "", merkmale: [], produktMerkmale: [], tel: "", mail: "", sonstiges: "" };
   var rest = [];
   splitItems(raw).forEach(function (tok) {
     var artHit = opts.kundeArt.find(function (a) { return a.toLowerCase() === tok.toLowerCase(); });
     if (artHit) { st.art = artHit; return; }
     var mHit = opts.kundeMerkmale.find(function (a) { return a.toLowerCase() === tok.toLowerCase(); });
     if (mHit) { st.merkmale.push(mHit); return; }
+    // Altbestand: Wertgarantie stand früher in der Kunde-Zeile -> zum Produkt umziehen
+    var pmHit = (opts.produktMerkmale || []).find(function (a) { return a.toLowerCase() === tok.toLowerCase(); });
+    if (pmHit) { st.produktMerkmale.push(pmHit); return; }
     var tel = /^tel\.?:?\s*(.+)$/i.exec(tok);
     if (tel) { st.tel = tel[1].trim(); return; }
     var mail = /^(?:e-?mail|mail)\.?:?\s*(.+)$/i.exec(tok);
@@ -144,9 +153,9 @@ function visibleOptions(field, allOptions, thema, checkedNow, filters) {
   });
 }
 
-// "Produkt: TV: Loewe stellar 55; HiFi" -> {checked, details, sonstiges}
-function produktState(raw, typen) {
-  var st = { checked: [], details: {}, sonstiges: "" };
+// "Produkt: TV: Loewe stellar 55; Wertgarantie" -> {checked, details, merkmale, sonstiges}
+function produktState(raw, typen, merkmale) {
+  var st = { checked: [], details: {}, merkmale: [], sonstiges: "" };
   if (!raw || isEmptyValue(raw)) return st;
   var rest = [];
   raw.split(";").map(function (s) { return s.trim(); }).filter(Boolean).forEach(function (tok) {
@@ -156,9 +165,14 @@ function produktState(raw, typen) {
     if (hit) {
       st.checked.push(hit);
       if (m && m[2]) st.details[hit] = m[2].trim();
-    } else {
-      rest.push(tok); // unbekannter Eintrag -> Sonstiges (geht nicht verloren)
+      return;
     }
+    var mkHit = (merkmale || []).find(function (t) { return t.toLowerCase() === tok.toLowerCase(); });
+    if (mkHit) {
+      st.merkmale.push(mkHit);
+      return;
+    }
+    rest.push(tok); // unbekannter Eintrag -> Sonstiges (geht nicht verloren)
   });
   st.sonstiges = rest.join("; ");
   return st;
@@ -171,6 +185,7 @@ function produktValue(st, typen) {
       parts.push(st.details[t] ? t + ": " + st.details[t] : t);
     }
   });
+  (st.merkmale || []).forEach(function (m) { parts.push(m); });
   if (st.sonstiges) parts.push(flat(st.sonstiges));
   return parts.join("; ");
 }
@@ -179,16 +194,24 @@ function produktValue(st, typen) {
 function stateFromBody(bodyText, opts) {
   var parsed = parseBlockText(bodyText);
   var f = parsed.fields;
+  var kunde = kundeState(f.kunde, opts);
+  var produkt = produktState(f.produkt, opts.produktTypen, opts.produktMerkmale);
+  // Migration: Produkt-Merkmale (Wertgarantie) aus alter Kunde-Zeile übernehmen
+  kunde.produktMerkmale.forEach(function (m) {
+    if (produkt.merkmale.indexOf(m) < 0) produkt.merkmale.push(m);
+  });
   return {
     found: parsed.found,
     thema: themaFromRaw(f.thema, opts.themen),
-    produkt: produktState(f.produkt, opts.produktTypen),
+    produkt: produkt,
+    kaufdatum: (f.kaufdatum && !isEmptyValue(f.kaufdatum)) ? f.kaufdatum : "",
+    seriennummer: (f.seriennummer && !isEmptyValue(f.seriennummer)) ? f.seriennummer : "",
     mitnehmen: packState(f.mitnehmen, []),
     werkzeug: packState(f.werkzeug, opts.werkzeug),
     zubehoer: packState(f.zubehoer, opts.zubehoer),
     beim_kunden: (f.beim_kunden && !isEmptyValue(f.beim_kunden)) ? f.beim_kunden : "",
     zahlung: zahlungState(f.zahlung, opts.zahlung),
-    kunde: kundeState(f.kunde, opts),
+    kunde: kunde,
     hinweise: hinweiseState(f.hinweise, opts.hinweise),
   };
 }
@@ -231,6 +254,8 @@ function valuesFromState(st) {
   return {
     thema: (st.thema || "").trim(),
     produkt: produktValue(st.produkt, (typeof BRIEFING_OPTIONS !== "undefined" ? BRIEFING_OPTIONS.produktTypen : null) || st.produkt.checked),
+    kaufdatum: flat(st.kaufdatum),
+    seriennummer: flat(st.seriennummer),
     mitnehmen: st.mitnehmen.keine ? "keine"
       : splitItems(flat(st.mitnehmen.sonstiges).replace(/;/g, ",")).join(", "),
     werkzeug: packValue(st.werkzeug),
@@ -332,6 +357,11 @@ function renderForm(st, opts) {
   $("g_produkt").innerHTML = (opts.produktTypen || []).map(function (t) {
     return produktRow(t, st.produkt.checked.indexOf(t) >= 0, st.produkt.details[t] || "");
   }).join("");
+  $("g_produkt_merkmale").innerHTML = (opts.produktMerkmale || []).map(function (o) {
+    return checkboxRow("produktMerkmale", o, st.produkt.merkmale.indexOf(o) >= 0);
+  }).join("");
+  $("f_kaufdatum").value = st.kaufdatum;
+  $("f_seriennummer").value = st.seriennummer;
   $("s_produkt").value = st.produkt.sonstiges;
 
   $("f_mitnehmen").value = st.mitnehmen.sonstiges.split(", ").filter(Boolean).join("\n");
@@ -381,7 +411,8 @@ function radioValue(name) {
 }
 
 function readProdukt() {
-  var st = { checked: [], details: {}, sonstiges: $("s_produkt").value };
+  var st = { checked: [], details: {}, merkmale: checkedValues("produktMerkmale"),
+    sonstiges: $("s_produkt").value };
   (BRIEFING_OPTIONS.produktTypen || []).forEach(function (t) {
     var ids = produktIds(t);
     var box = $(ids.box);
@@ -399,6 +430,8 @@ function readForm() {
   return {
     thema: currentThema(),
     produkt: readProdukt(),
+    kaufdatum: $("f_kaufdatum").value,
+    seriennummer: $("f_seriennummer").value,
     mitnehmen: { keine: $("k_mitnehmen").checked, checked: [], sonstiges: $("f_mitnehmen").value },
     werkzeug: { keine: $("k_werkzeug").checked, checked: checkedValues("werkzeug"), sonstiges: $("s_werkzeug").value },
     zubehoer: { keine: $("k_zubehoer").checked, checked: checkedValues("zubehoer"), sonstiges: $("s_zubehoer").value },

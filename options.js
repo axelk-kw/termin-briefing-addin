@@ -45,6 +45,11 @@ var BRIEFING_OPTIONS = {
     "SAT-/Kabel-Anschluss",
   ],
 
+  // Produkt-Merkmale — Häkchen in der Produkt-Gruppe (landen mit in der Produkt-Zeile)
+  produktMerkmale: [
+    "Wertgarantie",
+  ],
+
   // Werkzeug — abhakbare Standard-Ausrüstung
   werkzeug: [
     "große Leiter",
@@ -74,8 +79,8 @@ var BRIEFING_OPTIONS = {
   ],
 
   // Kunde: Merkmale — mehrere möglich
+  // (Wertgarantie steht bewusst bei den Produkt-Merkmalen — sie gehört zum Gerät)
   kundeMerkmale: [
-    "Wertgarantie",
     "Konkurrenzkunde",
     "Google Kunde",
   ],

@@ -58,6 +58,17 @@
   <h1>Termin-Briefing</h1>
 
   <fieldset>
+    <legend>Kunde</legend>
+    <div id="g_kunde_art"></div>
+    <div id="g_kunde_merkmale"></div>
+    <div class="inline">
+      <div><div class="sub">Telefon</div><input type="text" id="f_tel" inputmode="tel"></div>
+      <div><div class="sub">E-Mail</div><input type="text" id="f_mail" inputmode="email"></div>
+    </div>
+    <input type="text" id="s_kunde" placeholder="Sonstiges …">
+  </fieldset>
+
+  <fieldset>
     <legend>Thema</legend>
     <div class="hint">Steuert, welche Vorauswahlen unten angezeigt werden</div>
     <div id="g_thema"></div>
@@ -67,6 +78,11 @@
     <legend>Produkt</legend>
     <div class="hint">Worum geht es? Genaues Gerät optional dahinter eintragen</div>
     <div id="g_produkt"></div>
+    <div id="g_produkt_merkmale"></div>
+    <div class="inline">
+      <div><div class="sub">Kaufdatum</div><input type="text" id="f_kaufdatum" placeholder="optional"></div>
+      <div><div class="sub">Seriennummer</div><input type="text" id="f_seriennummer" placeholder="optional"></div>
+    </div>
     <input type="text" id="s_produkt" placeholder="Sonstiges …">
   </fieldset>
 
@@ -104,17 +120,6 @@
       <div><div class="sub">Betrag (€)</div><input type="text" id="f_betrag" inputmode="decimal" placeholder="z. B. 890"></div>
       <div><div class="sub">Zusatz</div><input type="text" id="f_zahlung_zusatz" placeholder="optional"></div>
     </div>
-  </fieldset>
-
-  <fieldset>
-    <legend>Kunde</legend>
-    <div id="g_kunde_art"></div>
-    <div id="g_kunde_merkmale"></div>
-    <div class="inline">
-      <div><div class="sub">Telefon</div><input type="text" id="f_tel" inputmode="tel"></div>
-      <div><div class="sub">E-Mail</div><input type="text" id="f_mail" inputmode="email"></div>
-    </div>
-    <input type="text" id="s_kunde" placeholder="Sonstiges …">
   </fieldset>
 
   <fieldset>
