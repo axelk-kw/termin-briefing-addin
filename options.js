@@ -109,5 +109,6 @@ var BRIEFING_OPTIONS = {
     "Kunden vorher kontaktieren",
     "Fixtermin",
     "Leihgerät mitnehmen",
+    "Altgerät mitnehmen",
   ],
 };

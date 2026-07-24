@@ -24,7 +24,6 @@ var FIELD_LABELS = {
   seriennummer: ["Seriennummer", "Seriennr", "SN", "S/N"],
   werkzeug:    ["Werkzeug"],
   zubehoer:    ["Zubehör", "Zubehoer", "Zubehör vor Ort"],
-  beim_kunden: ["Beim Kunden", "Vorhanden", "Hat bereits"],
   zahlung:     ["Zahlung", "Bezahlung"],
   kunde:       ["Kunde", "Kundeninfo"],
   hinweise:    ["Hinweise", "Hinweis"],
@@ -32,10 +31,10 @@ var FIELD_LABELS = {
 // Reihenfolge im Textblock: Kunde zuerst (Wunsch-Reihenfolge im Formular), dann
 // Thema/Produkt/Ware, dann Packlisten, dann restliche Infos.
 var FIELD_ORDER = ["kunde", "thema", "produkt", "ware", "kaufdatum", "seriennummer",
-  "werkzeug", "zubehoer", "beim_kunden", "zahlung", "hinweise"];
+  "werkzeug", "zubehoer", "zahlung", "hinweise"];
 var FIELD_NAME = { kunde: "Kunde", thema: "Thema", produkt: "Produkt", ware: "Ware",
   kaufdatum: "Kaufdatum", seriennummer: "Seriennummer", werkzeug: "Werkzeug",
-  zubehoer: "Zubehör", beim_kunden: "Beim Kunden", zahlung: "Zahlung", hinweise: "Hinweise" };
+  zubehoer: "Zubehör", zahlung: "Zahlung", hinweise: "Hinweise" };
 
 var EMPTY_VALUES = ["", "keine", "keins", "keiner", "nichts", "-", "—", "n/a", "nein"];
 
@@ -237,7 +236,6 @@ function stateFromBody(bodyText, opts) {
     seriennummer: (f.seriennummer && !isEmptyValue(f.seriennummer)) ? f.seriennummer : "",
     werkzeug: packState(f.werkzeug, opts.werkzeug),
     zubehoer: packState(f.zubehoer, opts.zubehoer),
-    beim_kunden: (f.beim_kunden && !isEmptyValue(f.beim_kunden)) ? f.beim_kunden : "",
     zahlung: zahlungState(f.zahlung, opts.zahlung),
     kunde: kunde,
     hinweise: hinweiseState(f.hinweise, opts.hinweise),
@@ -287,7 +285,6 @@ function valuesFromState(st) {
     seriennummer: flat(st.seriennummer),
     werkzeug: packValue(st.werkzeug),
     zubehoer: packValue(st.zubehoer),
-    beim_kunden: flat(st.beim_kunden),
     zahlung: zahlungValue(st.zahlung),
     kunde: kundeValue(st.kunde),
     hinweise: hinweiseValue(st.hinweise),
@@ -426,8 +423,6 @@ function renderForm(st, opts) {
   $("s_zubehoer").value = st.zubehoer.sonstiges;
   $("k_zubehoer").checked = st.zubehoer.keine;
 
-  $("f_beim_kunden").value = st.beim_kunden;
-
   $("g_zahlung").innerHTML = opts.zahlung.map(function (o) {
     return radioRow("zahlung", o, st.zahlung.methode === o);
   }).join("");
@@ -492,7 +487,6 @@ function readForm() {
     seriennummer: $("f_seriennummer").value,
     werkzeug: { keine: $("k_werkzeug").checked, checked: checkedValues("werkzeug"), sonstiges: $("s_werkzeug").value },
     zubehoer: { keine: $("k_zubehoer").checked, checked: checkedValues("zubehoer"), sonstiges: $("s_zubehoer").value },
-    beim_kunden: $("f_beim_kunden").value,
     zahlung: { methode: radioValue("zahlung"), betrag: $("f_betrag").value.trim(), zusatz: $("f_zahlung_zusatz").value },
     kunde: { art: radioValue("kundeArt"), merkmale: checkedValues("kundeMerkmale"),
       tel: $("f_tel").value, mail: $("f_mail").value, sonstiges: $("s_kunde").value },

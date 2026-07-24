@@ -13,7 +13,7 @@
  */
 
 var MARK_HINT = "(diese Zeile bitte nicht löschen)";
-var PLACEHOLDER_HINT = "Bitte über den Knopf »Briefing ausfüllen« erfassen (öffnet das Formular).";
+var PLACEHOLDER_HINT = "Bitte über den Knopf »Termin-Briefing« erfassen (öffnet das Formular).";
 
 // Erkennt einen bereits vorhandenen Block (gleiche Regex wie BLOCK_RE, Startmarker genügt).
 var BLOCK_START_RE = /---\s*BRIEFING\s*---/i;
