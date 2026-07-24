@@ -27,9 +27,9 @@ var BRIEFING_OPTIONS = {
   // Bereits angehakte Optionen bleiben immer sichtbar — es geht nichts verloren.
   // Die Zuordnungen sind Startwerte — einfach anpassen wie oben beschrieben.
   themenFilter: {
-    "Neulieferung":                     { werkzeug: ["Bohrmaschine", "Messgerät", "Sackkarre"], zubehoer: ["Wandhalter"] },
+    "Neulieferung":                     { werkzeug: ["Bohrmaschine", "Messgerät", "Sackkarre"], zubehoer: ["Wandhalter", "Apple TV", "FireTV Stick", "HD+ Karte"] },
     "Vor-Ort-Planung/Baubesprechung":   { werkzeug: ["Messgerät"], zubehoer: [] },
-    "Reparatur vor Ort":                { werkzeug: ["große Leiter", "Bohrmaschine", "Messgerät"], zubehoer: [] },
+    "Reparatur vor Ort":                { werkzeug: ["große Leiter", "Bohrmaschine", "Messgerät", "Service-Laptop", "Lötmaterial", "Netzwerkprüfer"], zubehoer: [] },
     "Reparatur-Abholung/Rücklieferung": { werkzeug: ["Sackkarre"], zubehoer: [] },
     // "Service-Termin": bewusst kein Eintrag -> alles anzeigen
   },
@@ -45,10 +45,23 @@ var BRIEFING_OPTIONS = {
     "SAT-/Kabel-Anschluss",
   ],
 
-  // Produkt-Merkmale — Häkchen in der Produkt-Gruppe (landen mit in der Produkt-Zeile)
+  // Produkt-Merkmale — optionale Häkchen in der Produkt-Gruppe (landen in der Produkt-Zeile)
   produktMerkmale: [
     "Wertgarantie",
   ],
+
+  // Warenstatus — genau EINE Auswahl (wo ist die Ware?), eigene "Ware:"-Zeile im Block.
+  warenStatus: [
+    "Ware noch im Lager",
+    "Ware bereits beim Kunden",
+    "Ware teilweise beim Kunden",
+  ],
+  // Diese Option bekommt ein Zusatzfeld "was fehlt?":
+  warenDetailOption: "Ware teilweise beim Kunden",
+  // Vorbelegung je Thema (nur wenn noch nichts gewählt ist):
+  warenDefaultByThema: {
+    "Neulieferung": "Ware noch im Lager",
+  },
 
   // Werkzeug — abhakbare Standard-Ausrüstung
   werkzeug: [
@@ -56,12 +69,18 @@ var BRIEFING_OPTIONS = {
     "Bohrmaschine",
     "Messgerät",
     "Sackkarre",
+    "Service-Laptop",
+    "Lötmaterial",
+    "Netzwerkprüfer",
   ],
 
   // Zubehör — abhakbare Standard-Artikel
   zubehoer: [
     "Wandhalter",
     "Ext. Festplatte",
+    "Apple TV",
+    "FireTV Stick",
+    "HD+ Karte",
   ],
 
   // Zahlung — genau EINE Auswahl (Radioknöpfe)
@@ -89,5 +108,6 @@ var BRIEFING_OPTIONS = {
   hinweise: [
     "Kunden vorher kontaktieren",
     "Fixtermin",
+    "Leihgerät mitnehmen",
   ],
 };

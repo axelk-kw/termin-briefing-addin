@@ -21,7 +21,7 @@
   <ProviderName>Knicker &amp; Wortmann</ProviderName>
   <DefaultLocale>de-DE</DefaultLocale>
   <DisplayName DefaultValue="Termin-Briefing" />
-  <Description DefaultValue="Fügt beim Anlegen eines Termins automatisch die Briefing-Checkliste ein (Mitnehmen, Werkzeug, Zahlung …)." />
+  <Description DefaultValue="Fügt beim Anlegen eines Termins die Briefing-Checkliste ein und öffnet per Knopf das Ausfüll-Formular." />
   <IconUrl DefaultValue="https://axelk-kw.github.io/termin-briefing-addin/assets/icon-64.png" />
   <HighResolutionIconUrl DefaultValue="https://axelk-kw.github.io/termin-briefing-addin/assets/icon-128.png" />
   <SupportUrl DefaultValue="https://github.com/axelk-kw/termin-briefing-tool" />

@@ -20,8 +20,20 @@
       margin: 0 0 10px; padding: 8px 10px 10px;
     }
     legend { font-weight: 600; padding: 0 4px; color: #111; }
-    .row { display: block; margin: 3px 0; cursor: pointer; }
+    .row { margin: 3px 0; cursor: pointer; }
     .row input { margin-right: 6px; vertical-align: -1px; }
+    /* Farbcodierung: Radios indigo (eine Auswahl), Checkboxen grün (optional) */
+    input[type="radio"] { accent-color: #4f46e5; }
+    input[type="checkbox"] { accent-color: #059669; }
+    /* Genau-eine-Auswahl -> Listenzeile */
+    .row.radio { display: block; }
+    /* Optionale Mehrfachauswahl -> grüner Chip, hebt sich klar von Radios ab */
+    .row.check {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: #f0fdf4; border: 1px solid #bbf7d0; color: #14532d;
+      border-radius: 14px; padding: 2px 10px; margin: 3px 5px 1px 0;
+    }
+    .row.check input { margin-right: 2px; }
     /* Produkt-Zeile: Checkbox + Inline-Detailfeld; bricht bei schmalem Pane um */
     .prow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 3px 0; }
     .prow label { flex: 0 0 auto; cursor: pointer; }
@@ -56,6 +68,7 @@
 </head>
 <body>
   <h1>Termin-Briefing</h1>
+  <p class="hint">Runde Felder ○ = eine Auswahl &nbsp;·&nbsp; grüne Chips ☑ = optional, mehrere möglich</p>
 
   <fieldset>
     <legend>Kunde</legend>
@@ -78,19 +91,14 @@
     <legend>Produkt</legend>
     <div class="hint">Worum geht es? Genaues Gerät optional dahinter eintragen</div>
     <div id="g_produkt"></div>
+    <div class="sub">Ware</div>
+    <div id="g_warenstatus"></div>
     <div id="g_produkt_merkmale"></div>
     <div class="inline">
       <div><div class="sub">Kaufdatum</div><input type="text" id="f_kaufdatum" placeholder="optional"></div>
       <div><div class="sub">Seriennummer</div><input type="text" id="f_seriennummer" placeholder="optional"></div>
     </div>
     <input type="text" id="s_produkt" placeholder="Sonstiges …">
-  </fieldset>
-
-  <fieldset>
-    <legend>Mitnehmen</legend>
-    <div class="hint">Produkte/Geräte — ein Eintrag pro Zeile</div>
-    <textarea id="f_mitnehmen" placeholder="z. B. Waschmaschine Bosch WAN28&#10;Anschlussschlauch"></textarea>
-    <label class="row keine"><input type="checkbox" id="k_mitnehmen"> nichts mitzunehmen („keine")</label>
   </fieldset>
 
   <fieldset>

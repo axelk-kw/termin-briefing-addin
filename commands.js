@@ -1,21 +1,19 @@
-/* Termin-Briefing Add-in — fügt den Briefing-Block in einen Termin ein.
+/* Termin-Briefing Add-in — fügt den (leeren) Briefing-Platzhalter in einen Termin ein.
  *
  * Zwei Wege, beide nutzen dieselbe Logik:
  *   1) onNewAppointment  – feuert automatisch beim Anlegen eines neuen Termins
  *                          (ereignisbasierte Aktivierung, OnNewAppointmentOrganizer)
- *   2) insertBriefing    – der Ribbon-Knopf "Briefing einfügen" (manueller Fallback,
- *                          funktioniert auf allen Plattformen inkl. Mac)
+ *   2) insertBriefing    – der Ribbon-Knopf "Briefing ausfüllen" (öffnet das Formular)
  *
- * Der eingefügte Block ist zeichengleich zu prefill.py (build_block/block_as_html),
- * damit das Digest-Tool ihn unverändert parst.
+ * Eingefügt wird bewusst nur ein schlanker Platzhalter (Kopf + Hinweis + Fuß) statt
+ * aller leeren Feldzeilen — das wirkt im Termin aufgeräumt. Sobald das Formular
+ * ausgefüllt und "Übernehmen" geklickt wird, ersetzt taskpane.js diesen Platzhalter
+ * durch den vollständigen Block (der Hinweis verschwindet dabei automatisch).
+ * Muss zeichengleich zu prefill.py (build_block) bleiben.
  */
 
-// Feldreihenfolge = FIELDS_FULL aus prefill.py (Vollvariante mit Werkzeug).
-// Beim manuellen Anlegen ist die Kategorie i. d. R. noch nicht gesetzt, daher immer
-// die volle Liste — überzählige Zeilen (z. B. Werkzeug im Laden) kann man löschen.
-var FIELDS = ["Kunde", "Thema", "Produkt", "Kaufdatum", "Seriennummer",
-  "Mitnehmen", "Werkzeug", "Zubehör", "Beim Kunden", "Zahlung", "Hinweise"];
 var MARK_HINT = "(diese Zeile bitte nicht löschen)";
+var PLACEHOLDER_HINT = "Bitte über den Knopf »Briefing ausfüllen« erfassen (öffnet das Formular).";
 
 // Erkennt einen bereits vorhandenen Block (gleiche Regex wie BLOCK_RE, Startmarker genügt).
 var BLOCK_START_RE = /---\s*BRIEFING\s*---/i;
@@ -24,17 +22,13 @@ function escapeHtml(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-// Baut den Block als HTML — entspricht build_block() + block_as_html() in prefill.py:
-// Marker mit Hinweis, dann je Feld "Name: " mit einer Leerzeile dazwischen.
+// Schlanker Platzhalter-Block als HTML — identisch zu prefill.build_block().
 function buildBlockHtml() {
-  var lines = [];
-  lines.push("--- BRIEFING ---   " + MARK_HINT);
-  for (var i = 0; i < FIELDS.length; i++) {
-    lines.push(FIELDS[i] + ": ");
-    if (i < FIELDS.length - 1) lines.push("");   // Leerzeile zwischen den Feldern
-  }
-  lines.push("--- ENDE ---   " + MARK_HINT);
-
+  var lines = [
+    "--- BRIEFING ---   " + MARK_HINT,
+    PLACEHOLDER_HINT,
+    "--- ENDE ---   " + MARK_HINT,
+  ];
   var inner = lines.map(escapeHtml).join("<br>");
   return '<div style="font-family:Aptos,Calibri,sans-serif;font-size:12pt">' + inner + "</div>";
 }

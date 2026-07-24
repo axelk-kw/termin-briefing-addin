@@ -19,9 +19,9 @@ var BLOCK_HTML_RE = /---\s*BRIEFING\s*---[\s\S]*?---\s*ENDE\s*---[^<]*/i;
 var FIELD_LABELS = {
   thema:       ["Thema", "Terminart"],
   produkt:     ["Produkt", "Produkttyp", "Gerät", "Geraet"],
+  ware:        ["Ware", "Warenstatus", "Warenlager"],
   kaufdatum:   ["Kaufdatum"],
   seriennummer: ["Seriennummer", "Seriennr", "SN", "S/N"],
-  mitnehmen:   ["Mitnehmen", "Produkte", "Ware"],
   werkzeug:    ["Werkzeug"],
   zubehoer:    ["Zubehör", "Zubehoer", "Zubehör vor Ort"],
   beim_kunden: ["Beim Kunden", "Vorhanden", "Hat bereits"],
@@ -30,11 +30,11 @@ var FIELD_LABELS = {
   hinweise:    ["Hinweise", "Hinweis"],
 };
 // Reihenfolge im Textblock: Kunde zuerst (Wunsch-Reihenfolge im Formular), dann
-// Thema/Produkt, dann Packlisten, dann restliche Infos.
-var FIELD_ORDER = ["kunde", "thema", "produkt", "kaufdatum", "seriennummer",
-  "mitnehmen", "werkzeug", "zubehoer", "beim_kunden", "zahlung", "hinweise"];
-var FIELD_NAME = { kunde: "Kunde", thema: "Thema", produkt: "Produkt", kaufdatum: "Kaufdatum",
-  seriennummer: "Seriennummer", mitnehmen: "Mitnehmen", werkzeug: "Werkzeug",
+// Thema/Produkt/Ware, dann Packlisten, dann restliche Infos.
+var FIELD_ORDER = ["kunde", "thema", "produkt", "ware", "kaufdatum", "seriennummer",
+  "werkzeug", "zubehoer", "beim_kunden", "zahlung", "hinweise"];
+var FIELD_NAME = { kunde: "Kunde", thema: "Thema", produkt: "Produkt", ware: "Ware",
+  kaufdatum: "Kaufdatum", seriennummer: "Seriennummer", werkzeug: "Werkzeug",
   zubehoer: "Zubehör", beim_kunden: "Beim Kunden", zahlung: "Zahlung", hinweise: "Hinweise" };
 
 var EMPTY_VALUES = ["", "keine", "keins", "keiner", "nichts", "-", "—", "n/a", "nein"];
@@ -190,6 +190,34 @@ function produktValue(st, typen) {
   return parts.join("; ");
 }
 
+// Kurzform für die Speicherung: "Ware noch im Lager" -> "noch im Lager"
+function warenShort(label) { return (label || "").replace(/^Ware\s+/i, "").trim(); }
+
+// "Ware:"-Zeile -> {status, detail}. Gespeichert z. B. "noch im Lager" oder
+// "teilweise beim Kunden — Fernbedienung fehlt".
+function warenState(raw, opts) {
+  var st = { status: "", detail: "" };
+  if (!raw || isEmptyValue(raw)) return st;
+  var parts = raw.split(" — ");
+  var base = parts[0].trim();
+  var detail = parts.slice(1).join(" — ").trim();
+  var hit = (opts.warenStatus || []).find(function (o) {
+    return warenShort(o).toLowerCase() === base.toLowerCase();
+  });
+  if (hit) {
+    st.status = hit;
+    if (hit === opts.warenDetailOption) st.detail = detail;
+  }
+  return st;
+}
+
+function warenValue(st, opts) {
+  if (!st || !st.status) return "";
+  var base = warenShort(st.status);
+  if (opts && st.status === opts.warenDetailOption && st.detail) base += " — " + st.detail;
+  return base;
+}
+
 // Body-Text -> kompletter Formular-Zustand
 function stateFromBody(bodyText, opts) {
   var parsed = parseBlockText(bodyText);
@@ -204,9 +232,9 @@ function stateFromBody(bodyText, opts) {
     found: parsed.found,
     thema: themaFromRaw(f.thema, opts.themen),
     produkt: produkt,
+    ware: warenState(f.ware, opts),
     kaufdatum: (f.kaufdatum && !isEmptyValue(f.kaufdatum)) ? f.kaufdatum : "",
     seriennummer: (f.seriennummer && !isEmptyValue(f.seriennummer)) ? f.seriennummer : "",
-    mitnehmen: packState(f.mitnehmen, []),
     werkzeug: packState(f.werkzeug, opts.werkzeug),
     zubehoer: packState(f.zubehoer, opts.zubehoer),
     beim_kunden: (f.beim_kunden && !isEmptyValue(f.beim_kunden)) ? f.beim_kunden : "",
@@ -254,10 +282,9 @@ function valuesFromState(st) {
   return {
     thema: (st.thema || "").trim(),
     produkt: produktValue(st.produkt, (typeof BRIEFING_OPTIONS !== "undefined" ? BRIEFING_OPTIONS.produktTypen : null) || st.produkt.checked),
+    ware: warenValue(st.ware, (typeof BRIEFING_OPTIONS !== "undefined" ? BRIEFING_OPTIONS : null)),
     kaufdatum: flat(st.kaufdatum),
     seriennummer: flat(st.seriennummer),
-    mitnehmen: st.mitnehmen.keine ? "keine"
-      : splitItems(flat(st.mitnehmen.sonstiges).replace(/;/g, ",")).join(", "),
     werkzeug: packValue(st.werkzeug),
     zubehoer: packValue(st.zubehoer),
     beim_kunden: flat(st.beim_kunden),
@@ -296,15 +323,17 @@ function blockFullHtml(values) {
 
 function $(id) { return document.getElementById(id); }
 
+// Optionale Mehrfachauswahl -> grüner "Chip" (class row check), hebt sich von Radios ab
 function checkboxRow(name, value, checked) {
   var id = name + "_" + value.replace(/\W+/g, "_");
-  return '<label class="row"><input type="checkbox" id="' + id + '" data-group="' + name +
+  return '<label class="row check"><input type="checkbox" id="' + id + '" data-group="' + name +
     '" value="' + value + '"' + (checked ? " checked" : "") + "> " + value + "</label>";
 }
 
+// Genau-eine-Auswahl -> Listenzeile (class row radio)
 function radioRow(name, value, checked) {
   var id = name + "_" + value.replace(/\W+/g, "_");
-  return '<label class="row"><input type="radio" id="' + id + '" name="' + name +
+  return '<label class="row radio"><input type="radio" id="' + id + '" name="' + name +
     '" value="' + value + '"' + (checked ? " checked" : "") + "> " + value + "</label>";
 }
 
@@ -326,6 +355,26 @@ function produktRow(typ, checked, detail) {
     + "</div>";
 }
 
+function warenIds(status) { return "warenstatus_" + status.replace(/\W+/g, "_"); }
+
+// Warenstatus als Radio; die Detail-Option bekommt ein "was fehlt?"-Feld daneben
+function warenRow(status, checked, detail, withDetail) {
+  var radio = '<label class="row radio"><input type="radio" name="warenstatus" id="'
+    + warenIds(status) + '" value="' + escapeAttr(status) + '"' + (checked ? " checked" : "")
+    + "> " + status + "</label>";
+  if (!withDetail) return radio;
+  return '<div class="prow">' + radio
+    + '<input type="text" id="f_ware_detail" value="' + escapeAttr(detail)
+    + '" placeholder="was fehlt?"></div>';
+}
+
+// Warenstatus je Thema vorbelegen — nur, wenn noch nichts gewählt ist
+function applyWareDefault(thema) {
+  if (radioValue("warenstatus")) return;
+  var def = (BRIEFING_OPTIONS.warenDefaultByThema || {})[thema];
+  if (def) { var el = $(warenIds(def)); if (el) el.checked = true; }
+}
+
 // Eine Packlisten-Gruppe (Werkzeug/Zubehör) themenabhängig gefiltert zeichnen
 function renderPackGroup(field, containerId, allOptions, checked, thema) {
   var vis = visibleOptions(field, allOptions, thema, checked, BRIEFING_OPTIONS.themenFilter);
@@ -344,6 +393,7 @@ function applyThemaFilter() {
   var thema = currentThema();
   renderPackGroup("werkzeug", "g_werkzeug", BRIEFING_OPTIONS.werkzeug, checkedValues("werkzeug"), thema);
   renderPackGroup("zubehoer", "g_zubehoer", BRIEFING_OPTIONS.zubehoer, checkedValues("zubehoer"), thema);
+  applyWareDefault(thema);  // z. B. Neulieferung -> "Ware noch im Lager" vorwählen
 }
 
 function renderForm(st, opts) {
@@ -360,12 +410,13 @@ function renderForm(st, opts) {
   $("g_produkt_merkmale").innerHTML = (opts.produktMerkmale || []).map(function (o) {
     return checkboxRow("produktMerkmale", o, st.produkt.merkmale.indexOf(o) >= 0);
   }).join("");
+  $("g_warenstatus").innerHTML = (opts.warenStatus || []).map(function (o) {
+    return warenRow(o, st.ware.status === o, st.ware.detail, o === opts.warenDetailOption);
+  }).join("");
+  applyWareDefault(st.thema);  // Neulieferung ohne gespeicherten Status -> Vorbelegung
   $("f_kaufdatum").value = st.kaufdatum;
   $("f_seriennummer").value = st.seriennummer;
   $("s_produkt").value = st.produkt.sonstiges;
-
-  $("f_mitnehmen").value = st.mitnehmen.sonstiges.split(", ").filter(Boolean).join("\n");
-  $("k_mitnehmen").checked = st.mitnehmen.keine;
 
   renderPackGroup("werkzeug", "g_werkzeug", opts.werkzeug, st.werkzeug.checked, st.thema);
   $("s_werkzeug").value = st.werkzeug.sonstiges;
@@ -426,13 +477,19 @@ function readProdukt() {
   return st;
 }
 
+function readWare() {
+  var status = radioValue("warenstatus");
+  var detail = $("f_ware_detail") ? $("f_ware_detail").value.trim() : "";
+  return { status: status, detail: (status === BRIEFING_OPTIONS.warenDetailOption ? detail : "") };
+}
+
 function readForm() {
   return {
     thema: currentThema(),
     produkt: readProdukt(),
+    ware: readWare(),
     kaufdatum: $("f_kaufdatum").value,
     seriennummer: $("f_seriennummer").value,
-    mitnehmen: { keine: $("k_mitnehmen").checked, checked: [], sonstiges: $("f_mitnehmen").value },
     werkzeug: { keine: $("k_werkzeug").checked, checked: checkedValues("werkzeug"), sonstiges: $("s_werkzeug").value },
     zubehoer: { keine: $("k_zubehoer").checked, checked: checkedValues("zubehoer"), sonstiges: $("s_zubehoer").value },
     beim_kunden: $("f_beim_kunden").value,
@@ -503,6 +560,13 @@ if (typeof Office !== "undefined" && typeof document !== "undefined" && Office.o
         if (box) box.checked = true;
       }
     });
+    // Tippen ins "was fehlt?"-Feld wählt automatisch "teilweise beim Kunden"
+    $("g_warenstatus").addEventListener("input", function (e) {
+      if (e.target && e.target.id === "f_ware_detail" && e.target.value.trim()) {
+        var el = $(warenIds(BRIEFING_OPTIONS.warenDetailOption));
+        if (el) el.checked = true;
+      }
+    });
     // Angeheftetes Taskpane (📌): beim Wechsel auf einen anderen Termin neu laden,
     // sonst zeigt das Formular die Werte des vorherigen Termins.
     if (Office.context && Office.context.mailbox && Office.context.mailbox.addHandlerAsync) {
@@ -520,5 +584,6 @@ if (typeof module !== "undefined" && module.exports) {
     valuesFromState: valuesFromState, buildBlockLines: buildBlockLines,
     blockFullHtml: blockFullHtml, zahlungState: zahlungState,
     visibleOptions: visibleOptions, themaFromRaw: themaFromRaw,
-    produktState: produktState, produktValue: produktValue };
+    produktState: produktState, produktValue: produktValue,
+    warenState: warenState, warenValue: warenValue };
 }

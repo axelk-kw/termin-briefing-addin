@@ -115,9 +115,15 @@ automatisch (siehe Hinweise), tut es der Knopf **„Briefing einfügen"** im Ter
   Outlook neu starten bzw. im Browser hart neu laden (Strg/Cmd+Shift+R).
 - **Icon ändern:** `assets/`-PNGs ersetzen (Logo) oder `make-icons.py` anpassen und
   `python3 make-icons.py` neu laufen lassen, dann committen + pushen.
-- **Zusammenspiel mit dem Tool:** Das Add-in füllt beim **Anlegen** vor, `prefill.py` fängt auf
-  dem Mini-PC alles ab, was **anders** angelegt wurde (Handy, Serientermine, importierte Termine).
+- **Zusammenspiel mit dem Tool:** Das Add-in fügt beim **Anlegen** einen schlanken Platzhalter
+  ein (nur Kopf/Fuß + Hinweis „Bitte über den Knopf ausfüllen"), `prefill.py` tut dasselbe auf
+  dem Mini-PC für alles, was **anders** angelegt wurde (Handy, Serien, Importe). Beim „Übernehmen"
+  ersetzt das Formular den Platzhalter durch den vollständigen Block — der Hinweis verschwindet.
   Doppelt eingefügt wird nie — beide prüfen erst, ob schon ein Block da ist.
+- **Radios vs. Chips:** Runde Felder (○) = genau eine Auswahl (Thema, Zahlung, Kunde-Art,
+  Warenstatus). Grüne Chips (☑) = optionale Mehrfachauswahl (Werkzeug, Zubehör, Hinweise,
+  Kunden-/Produkt-Merkmale). Die „Ware"-Auswahl kann je Thema vorbelegt werden
+  (`warenDefaultByThema` in options.js, z. B. Neulieferung → „Ware noch im Lager").
 - **Vollvariante:** Das Add-in fügt immer die volle Feldliste ein (inkl. Werkzeug). Beim manuellen
   Anlegen steht die Kategorie meist noch nicht fest; überzählige Zeilen einfach löschen.
 
