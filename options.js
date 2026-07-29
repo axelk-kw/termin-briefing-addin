@@ -50,6 +50,22 @@ var BRIEFING_OPTIONS = {
     "Wertgarantie",
   ],
 
+  // Bedingte Sichtbarkeit ganzer Bereiche je Thema.
+  //   Schlüssel = Feld, Wert = Liste der Themen, bei denen das Feld ANGEZEIGT wird.
+  //   - Feld hier nicht aufgeführt -> immer sichtbar
+  //   - Thema nicht in der Liste    -> Feld ausgeblendet und wird NICHT gespeichert
+  //   Felder: "ware" (Warenstatus-Gruppe), "kaufSerie" (Kaufdatum + Seriennummer)
+  feldSichtbarBeiThema: {
+    ware:      ["Neulieferung"],
+    kaufSerie: ["Service-Termin", "Reparatur vor Ort", "Reparatur-Abholung/Rücklieferung"],
+  },
+
+  // Einzelne Produkt-Merkmale bei bestimmten Themen ausblenden (unpassend).
+  //   Schlüssel = Merkmal, Wert = Liste der Themen, bei denen es WEG ist.
+  merkmalVerstecktBeiThema: {
+    "Wertgarantie": ["Vor-Ort-Planung/Baubesprechung"],
+  },
+
   // Warenstatus — genau EINE Auswahl (wo ist die Ware?), eigene "Ware:"-Zeile im Block.
   warenStatus: [
     "Ware noch im Lager",

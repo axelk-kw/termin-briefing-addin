@@ -152,6 +152,23 @@ function visibleOptions(field, allOptions, thema, checkedNow, filters) {
   });
 }
 
+// Ist ein bedingtes Feld beim aktuellen Thema sichtbar? (feldSichtbarBeiThema in options.js)
+// Feld dort nicht gelistet -> immer sichtbar. Ohne BRIEFING_OPTIONS (Node-Test) -> sichtbar.
+function fieldVisibleForThema(field, thema) {
+  if (typeof BRIEFING_OPTIONS === "undefined") return true;
+  var map = BRIEFING_OPTIONS.feldSichtbarBeiThema || {};
+  var allowed = map[field];
+  if (allowed === undefined) return true;
+  return allowed.indexOf(thema) >= 0;
+}
+
+// Produkt-Merkmale, die beim aktuellen Thema NICHT ausgeblendet sind (merkmalVerstecktBeiThema)
+function merkmaleVisibleForThema(merkmale, thema) {
+  if (typeof BRIEFING_OPTIONS === "undefined") return (merkmale || []).slice();
+  var hide = BRIEFING_OPTIONS.merkmalVerstecktBeiThema || {};
+  return (merkmale || []).filter(function (m) { return (hide[m] || []).indexOf(thema) < 0; });
+}
+
 // "Produkt: TV: Loewe stellar 55; Wertgarantie" -> {checked, details, merkmale, sonstiges}
 function produktState(raw, typen, merkmale) {
   var st = { checked: [], details: {}, merkmale: [], sonstiges: "" };
@@ -277,12 +294,18 @@ function hinweiseValue(st) {
 }
 
 function valuesFromState(st) {
+  var opts = (typeof BRIEFING_OPTIONS !== "undefined") ? BRIEFING_OPTIONS : null;
+  var thema = (st.thema || "").trim();
+  var showKauf = fieldVisibleForThema("kaufSerie", thema);
+  // Beim aktuellen Thema unpassende Produkt-Merkmale (z. B. Wertgarantie) nicht speichern.
+  var prodOut = { checked: st.produkt.checked, details: st.produkt.details,
+    merkmale: merkmaleVisibleForThema(st.produkt.merkmale, thema), sonstiges: st.produkt.sonstiges };
   return {
-    thema: (st.thema || "").trim(),
-    produkt: produktValue(st.produkt, (typeof BRIEFING_OPTIONS !== "undefined" ? BRIEFING_OPTIONS.produktTypen : null) || st.produkt.checked),
-    ware: warenValue(st.ware, (typeof BRIEFING_OPTIONS !== "undefined" ? BRIEFING_OPTIONS : null)),
-    kaufdatum: flat(st.kaufdatum),
-    seriennummer: flat(st.seriennummer),
+    thema: thema,
+    produkt: produktValue(prodOut, (opts ? opts.produktTypen : null) || st.produkt.checked),
+    ware: fieldVisibleForThema("ware", thema) ? warenValue(st.ware, opts) : "",
+    kaufdatum: showKauf ? flat(st.kaufdatum) : "",
+    seriennummer: showKauf ? flat(st.seriennummer) : "",
     werkzeug: packValue(st.werkzeug),
     zubehoer: packValue(st.zubehoer),
     zahlung: zahlungValue(st.zahlung),
@@ -385,11 +408,30 @@ function currentThema() {
   return radioValue("thema") || $("g_thema").dataset.raw || "";
 }
 
+// Container per display ein-/ausblenden (Werte bleiben erhalten, nur unsichtbar)
+function toggleSection(id, show) { var el = $(id); if (el) el.style.display = show ? "" : "none"; }
+
+// Produkt-Merkmale themenabhängig zeichnen (unpassende ausblenden, z. B. Wertgarantie)
+function renderMerkmale(thema, checked) {
+  var vis = merkmaleVisibleForThema(BRIEFING_OPTIONS.produktMerkmale || [], thema);
+  $("g_produkt_merkmale").innerHTML = vis.map(function (o) {
+    return checkboxRow("produktMerkmale", o, (checked || []).indexOf(o) >= 0);
+  }).join("");
+}
+
+// Bedingte Bereiche (Ware, Kaufdatum/Seriennummer, Merkmale) je Thema ein-/ausblenden
+function applyThemaVisibility(thema) {
+  toggleSection("sec_ware", fieldVisibleForThema("ware", thema));
+  toggleSection("sec_kaufserie", fieldVisibleForThema("kaufSerie", thema));
+  renderMerkmale(thema, checkedValues("produktMerkmale"));
+}
+
 // Beim Themawechsel: Häkchen aus dem DOM retten, Gruppen neu (gefiltert) zeichnen
 function applyThemaFilter() {
   var thema = currentThema();
   renderPackGroup("werkzeug", "g_werkzeug", BRIEFING_OPTIONS.werkzeug, checkedValues("werkzeug"), thema);
   renderPackGroup("zubehoer", "g_zubehoer", BRIEFING_OPTIONS.zubehoer, checkedValues("zubehoer"), thema);
+  applyThemaVisibility(thema);
   applyWareDefault(thema);  // z. B. Neulieferung -> "Ware noch im Lager" vorwählen
 }
 
@@ -404,9 +446,7 @@ function renderForm(st, opts) {
   $("g_produkt").innerHTML = (opts.produktTypen || []).map(function (t) {
     return produktRow(t, st.produkt.checked.indexOf(t) >= 0, st.produkt.details[t] || "");
   }).join("");
-  $("g_produkt_merkmale").innerHTML = (opts.produktMerkmale || []).map(function (o) {
-    return checkboxRow("produktMerkmale", o, st.produkt.merkmale.indexOf(o) >= 0);
-  }).join("");
+  renderMerkmale(st.thema, st.produkt.merkmale);
   $("g_warenstatus").innerHTML = (opts.warenStatus || []).map(function (o) {
     return warenRow(o, st.ware.status === o, st.ware.detail, o === opts.warenDetailOption);
   }).join("");
@@ -443,6 +483,11 @@ function renderForm(st, opts) {
     return checkboxRow("hinweise", o, st.hinweise.checked.indexOf(o) >= 0);
   }).join("");
   $("f_hinweise").value = st.hinweise.freitext;
+
+  // Bedingte Bereiche (Ware nur bei Neulieferung, Kaufdatum/Seriennummer nur bei
+  // Service/Reparatur) passend zum geladenen Thema ein-/ausblenden.
+  toggleSection("sec_ware", fieldVisibleForThema("ware", st.thema));
+  toggleSection("sec_kaufserie", fieldVisibleForThema("kaufSerie", st.thema));
 }
 
 function checkedValues(group) {
@@ -579,5 +624,7 @@ if (typeof module !== "undefined" && module.exports) {
     blockFullHtml: blockFullHtml, zahlungState: zahlungState,
     visibleOptions: visibleOptions, themaFromRaw: themaFromRaw,
     produktState: produktState, produktValue: produktValue,
-    warenState: warenState, warenValue: warenValue };
+    warenState: warenState, warenValue: warenValue,
+    fieldVisibleForThema: fieldVisibleForThema,
+    merkmaleVisibleForThema: merkmaleVisibleForThema };
 }
