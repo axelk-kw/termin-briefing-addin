@@ -9,11 +9,16 @@
 
 /* ============================= reine Logik ============================= */
 
-var MARK_HINT = "(diese Zeile bitte nicht löschen)";
-var BLOCK_TEXT_RE = /---\s*BRIEFING\s*---([\s\S]*?)---\s*ENDE\s*---/i;
+// Der Block besteht nur aus Feldzeilen (Kunde: … bis Hinweise: …), ohne Kopf-/Fußzeile.
+// Altbestand mit Markern ("--- BRIEFING --- … --- ENDE ---") wird weiter gelesen und
+// beim Übernehmen ins neue Format überführt.
+var LEGACY_TEXT_RE = /---\s*BRIEFING\s*---([\s\S]*?)---\s*ENDE\s*---/i;
 // Im HTML-Body: vom Startmarker bis Endmarker inkl. Hinweistext dahinter,
 // aber ohne umschließende Tags — so bleibt die Formatierung (div) erhalten.
-var BLOCK_HTML_RE = /---\s*BRIEFING\s*---[\s\S]*?---\s*ENDE\s*---[^<]*/i;
+var LEGACY_HTML_RE = /---\s*BRIEFING\s*---[\s\S]*?---\s*ENDE\s*---[^<]*/i;
+// Neues Format im HTML-Body: erste Kunde-Zeile bis Ende der Hinweise-Zeile (Thema dazwischen
+// als Plausibilitätsprüfung, damit nicht irgendein "Kunde:" im Freitext greift).
+var BLOCK_HTML_RE = /Kunde(?:ninfo)?\s*:[\s\S]*?(?:Thema|Terminart)\s*:[\s\S]*?Hinweise?\s*:[^<]*/i;
 
 // Feld-Beschriftungen wie in briefing.py (FIELDS), inkl. erkannter Varianten
 var FIELD_LABELS = {
@@ -49,21 +54,42 @@ function splitItems(raw) {
 
 function escRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 
+// "Kunde: Müller" -> {key: "kunde", value: "Müller"}; keine bekannte Feldzeile -> null
+function fieldLine(line) {
+  var lm = /^\s*([A-Za-zÄÖÜäöüß][A-Za-zÄÖÜäöüß /]*?)\s*:\s*(.*)$/.exec(line);
+  if (!lm) return null;
+  var name = lm[1].trim().toLowerCase();
+  var key = Object.keys(FIELD_LABELS).find(function (k) {
+    return FIELD_LABELS[k].some(function (lab) { return lab.toLowerCase() === name; });
+  });
+  return key ? { key: key, value: lm[2].trim() } : null;
+}
+
+// Zeilen des Blocks finden: Altbestand zwischen den Markern, sonst ab der ersten
+// Kunde-Zeile bis einschließlich der ersten Hinweise-Zeile danach (fehlt sie: bis Textende).
+function blockLines(bodyText) {
+  var m = LEGACY_TEXT_RE.exec(bodyText || "");
+  if (m) return m[1].split(/\r?\n/);
+  var lines = (bodyText || "").split(/\r?\n/);
+  var start = lines.findIndex(function (l) { var f = fieldLine(l); return f && f.key === "kunde"; });
+  if (start < 0) return null;
+  var end = lines.length - 1;
+  for (var i = start + 1; i < lines.length; i++) {
+    var f = fieldLine(lines[i]);
+    if (f && f.key === "hinweise") { end = i; break; }
+  }
+  return lines.slice(start, end + 1);
+}
+
 // Rohe Feldwerte aus dem Body-Text lesen: { found: bool, fields: {key: "roher Wert"} }
 function parseBlockText(bodyText) {
   var res = { found: false, fields: {} };
-  var m = BLOCK_TEXT_RE.exec(bodyText || "");
-  if (!m) return res;
+  var lines = blockLines(bodyText);
+  if (!lines) return res;
   res.found = true;
-  var lookup = {};
-  Object.keys(FIELD_LABELS).forEach(function (key) {
-    FIELD_LABELS[key].forEach(function (lab) { lookup[lab.toLowerCase()] = key; });
-  });
-  m[1].split(/\r?\n/).forEach(function (line) {
-    var lm = /^\s*([A-Za-zÄÖÜäöüß][A-Za-zÄÖÜäöüß /]*?)\s*:\s*(.*)$/.exec(line);
-    if (!lm) return;
-    var key = lookup[lm[1].trim().toLowerCase()];
-    if (key) res.fields[key] = lm[2].trim();
+  lines.forEach(function (line) {
+    var f = fieldLine(line);
+    if (f) res.fields[f.key] = f.value;
   });
   return res;
 }
@@ -314,14 +340,14 @@ function valuesFromState(st) {
   };
 }
 
-// Blocktext bauen — Format identisch zu prefill.py (Leerzeile zwischen Feldern)
+// Blocktext bauen — Format identisch zu commands.js und prefill.py (Leerzeile zwischen
+// Feldern, keine Kopf-/Fußzeile)
 function buildBlockLines(values) {
-  var lines = ["--- BRIEFING ---   " + MARK_HINT];
+  var lines = [];
   FIELD_ORDER.forEach(function (key, i) {
     lines.push(FIELD_NAME[key] + ": " + (values[key] || ""));
     if (i < FIELD_ORDER.length - 1) lines.push("");
   });
-  lines.push("--- ENDE ---   " + MARK_HINT);
   return lines;
 }
 
@@ -574,9 +600,11 @@ function save() {
       if (r.status === Office.AsyncResultStatus.Succeeded) setStatus("✓ Übernommen.", true);
       else setStatus("Schreiben fehlgeschlagen — bitte erneut versuchen.", false);
     };
-    if (BLOCK_HTML_RE.test(html)) {
-      // vorhandenen Block ersetzen (Formatierung/Umgebung bleibt stehen)
-      var neu = html.replace(BLOCK_HTML_RE, blockInnerHtml(values));
+    // vorhandenen Block ersetzen (Formatierung/Umgebung bleibt stehen); Altbestand mit
+    // Markern zuerst, damit dessen Kopf-/Fußzeile dabei mit verschwindet
+    var re = LEGACY_HTML_RE.test(html) ? LEGACY_HTML_RE : (BLOCK_HTML_RE.test(html) ? BLOCK_HTML_RE : null);
+    if (re) {
+      var neu = html.replace(re, blockInnerHtml(values));
       item.body.setAsync(neu, { coercionType: Office.CoercionType.Html }, done);
     } else {
       item.body.prependAsync(blockFullHtml(values), { coercionType: Office.CoercionType.Html }, done);
